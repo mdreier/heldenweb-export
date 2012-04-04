@@ -52,9 +52,9 @@ public class HeldenWebExport implements HeldenWertePlugin3
 	}
 
 	@Override
-	public void doWork(JFrame parentWindow, PluginHeld2[] heroes, PluginHeldenWerteWerkzeug3 tool)
+	public void doWork(JFrame parentWindow, PluginHeld2[] helden, PluginHeldenWerteWerkzeug3 werkzeug)
 	{
-		new ExportUIController(parentWindow);
+		new ExportUIController(parentWindow, helden, werkzeug);
 	}
 
 }

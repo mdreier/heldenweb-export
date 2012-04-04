@@ -67,6 +67,7 @@ public class SettingsDialog extends AbstractDialog implements ISaveCallback
 	public SettingsDialog(Window parent, boolean forceSettings)
 	{
 		super(parent, "HeldenWeb Export Einstellungen");
+		mappings = new HashMap<SettingsDialog.Setting, JTextField>();
 		if (forceSettings)
 		{
 			closeAction.setEnabled(false);
@@ -86,7 +87,6 @@ public class SettingsDialog extends AbstractDialog implements ISaveCallback
 		JPanel dialogArea = new JPanel();
 		dialogArea.setLayout(new GridLayout(0, 2));
 		parent.add(dialogArea);
-		mappings = new HashMap<SettingsDialog.Setting, JTextField>();
 		createSettingInput(dialogArea, "HeldenWeb Server",
 						"Der Hostname des Servers, auf dem HeldenWeb läuft (z.B. www.meinServer.example)", Setting.SERVER, false);
 		createSettingInput(dialogArea, "Port", "Der Port, auf dem der Server auf Verbindungen wartet (meist 80)",

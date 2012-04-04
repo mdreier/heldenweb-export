@@ -39,7 +39,7 @@ public class OptionsAction extends AbstractAction
 	@Override
 	public void actionPerformed(ActionEvent e)
 	{
-		new SettingsDialog(parent).setVisible(true);
+		new SettingsDialog(parent).open();
 	}
 
 }

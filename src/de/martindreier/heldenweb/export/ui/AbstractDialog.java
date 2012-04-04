@@ -18,7 +18,6 @@ public abstract class AbstractDialog extends JDialog
 	protected AbstractDialog(Window parent, String title)
 	{
 		super(parent, title, ModalityType.APPLICATION_MODAL);
-		init();
 		if (parent != null)
 		{
 			centerOnParent(parent);
@@ -90,5 +89,28 @@ public abstract class AbstractDialog extends JDialog
 		parent.add(buttonBar, BorderLayout.PAGE_END);
 	}
 
+	/**
+	 * Add the buttons to the button bar.
+	 * 
+	 * @param buttonBar
+	 *          The button bar container.
+	 */
 	protected abstract void addButtonsToButtonBar(Box buttonBar);
+
+	/**
+	 * Initialize and open the dialog.
+	 */
+	public void open()
+	{
+		init();
+		setVisible(true);
+	}
+
+	/**
+	 * Close the dialog.
+	 */
+	public void close()
+	{
+		setVisible(false);
+	}
 }

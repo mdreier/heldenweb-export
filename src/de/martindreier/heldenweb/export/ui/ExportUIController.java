@@ -1,18 +1,21 @@
 package de.martindreier.heldenweb.export.ui;
 
 import helden.Fehlermeldung;
+import helden.plugin.werteplugin2.PluginHeld2;
+import helden.plugin.werteplugin3.PluginHeldenWerteWerkzeug3;
 import javax.swing.JFrame;
 import de.martindreier.heldenweb.export.HeldenWebExportException;
 import de.martindreier.heldenweb.export.Settings;
+import de.martindreier.heldenweb.export.sync.Synchronizer;
 
 public class ExportUIController
 {
-	public ExportUIController()
+	public ExportUIController(PluginHeld2[] helden, PluginHeldenWerteWerkzeug3 werkzeug)
 	{
-		this(null);
+		this(null, helden, werkzeug);
 	}
 
-	public ExportUIController(JFrame parent)
+	public ExportUIController(JFrame parent, PluginHeld2[] helden, PluginHeldenWerteWerkzeug3 werkzeug)
 	{
 		try
 		{
@@ -20,9 +23,10 @@ public class ExportUIController
 			if (!optionsLoaded)
 			{
 				// First execution, show options dialog first
-				new SettingsDialog(parent, true).setVisible(true);
+				new SettingsDialog(parent, true).open();
 			}
-			new ExportDialog(parent).setVisible(true);
+			Synchronizer synchronizer = new Synchronizer(helden, werkzeug);
+			new ExportDialog(parent, synchronizer).open();
 		}
 		catch (HeldenWebExportException exception)
 		{
