@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project basedir="." default="package" name="Helden-Web Export">
+    <property environment="env"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.6"/>
+    <property name="source" value="1.6"/>
+    <path id="Helden.userclasspath">
+        <pathelement location="lib/helden.jar"/>
+    </path>
+    <path id="Helden-Web Export.classpath">
+        <pathelement location="build"/>
+        <path refid="Helden.userclasspath"/>
+    </path>
+    <target name="init">
+        <mkdir dir="build"/>
+        <copy includeemptydirs="false" todir="build">
+            <fileset dir="src">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="build"/>
+    </target>
+    <target depends="init" name="build">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="build" source="${source}" target="${target}">
+            <src path="src"/>
+            <classpath refid="Helden-Web Export.classpath"/>
+        </javac>
+    </target>
+	<target depends="build" name="package">
+		<copy todir="build/icons" >
+			<fileset dir="icons" />
+		</copy>
+		<jar destfile="heldenweb-export.jar" manifest="META-INF/MANIFEST.MF">
+			<fileset dir="build" />
+		</jar>
+	</target>
+</project>
