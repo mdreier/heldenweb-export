@@ -37,7 +37,7 @@ public class HttpClient
 	 * @param secure
 	 *          Set to <code>true</code> to use a secure connection to the server.
 	 */
-	public HttpClient(String server, int port, String basePath, boolean secure)
+	public HttpClient(String server, int port, String basePath, boolean secure, boolean redirect)
 	{
 		this.server = server;
 		this.port = port;
@@ -51,6 +51,16 @@ public class HttpClient
 		}
 		this.basePath = basePath;
 		this.secure = secure;
+		if (redirect)
+		{
+			HttpURLConnection.setFollowRedirects(true);
+		}
+	}
+
+	public Response post(String path, Map<String, String> queryParameters, String contentType, String content)
+					throws HttpClientException
+	{
+		return sendRequest(path, queryParameters, content, contentType, Method.POST);
 	}
 
 	/**
@@ -232,7 +242,7 @@ public class HttpClient
 		private String										responseContent;
 		private Map<String, List<String>>	responseHeaders;
 
-		public int getResonseCode()
+		public int getResponseCode()
 		{
 			return resonseCode;
 		}

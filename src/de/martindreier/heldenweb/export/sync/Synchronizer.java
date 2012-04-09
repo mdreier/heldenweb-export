@@ -1,7 +1,13 @@
 package de.martindreier.heldenweb.export.sync;
 
+import helden.plugin.werteplugin.PluginTalent;
 import helden.plugin.werteplugin2.PluginHeld2;
 import helden.plugin.werteplugin3.PluginHeldenWerteWerkzeug3;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import de.martindreier.heldenweb.export.HeldenWebExportException;
 import de.martindreier.heldenweb.export.Settings;
 
 public class Synchronizer
@@ -18,18 +24,56 @@ public class Synchronizer
 		this.helden = helden;
 		this.werkzeug = werkzeug;
 		Settings settings = Settings.getSettings();
-		client = new HttpClient(settings.getServer(), Integer.parseInt(settings.getPort()), settings.getPath(), false);
+		client = new HttpClient(settings.getServer(), Integer.parseInt(settings.getPort()), settings.getPath(), false, true);
 		cache = new Cache(client);
 	}
 
-	public void sync()
+	public void sync() throws HeldenWebExportException
 	{
+		werkzeug.setAktivenHeld(werkzeug.getSelectesHeld());
 		syncBaseData();
 	}
 
-	private void syncBaseData()
+	/**
+	 * Synchronize basic data. This includes:
+	 * <ul>
+	 * <li>Attributes (Eigenschaften)</li>
+	 * <li>Talent Types (Talentarten)</li>
+	 * <li>Talents (Talente)</li>
+	 * <li>(Dis-)Advantages (Vor-/Nachteile)</li>
+	 * <li>Special Abilities (Sonderfertigkeiten)</li>
+	 * <li>Spells (Zauber)</li>
+	 * <li>Equipment (Ausrüstung)</li>
+	 * </ul>
+	 * 
+	 * @throws HeldenWebExportException
+	 */
+	private void syncBaseData() throws HeldenWebExportException
 	{
-		cache.syncronizeTalents();
+		// Eigenschaften
+		cache.synchronizeAttributes(werkzeug);
+
+		// Talentarten und Talente
+		String[] talentNamen = werkzeug.getTalenteAlsString();
+		Map<String, PluginTalent> talente = new TreeMap<String, PluginTalent>();
+		Set<String> talentarten = new HashSet<String>();
+		for (String talentName : talentNamen)
+		{
+			PluginTalent talent = werkzeug.getTalent(talentName);
+			talente.put(talentName, talent);
+			talentarten.add(talent.getTalentart());
+		}
+		cache.synchronizeTalentTypes(talentarten);
+		cache.synchronizeTalents(talente, werkzeug);
+
+		// Vorteile
+		cache.synchronizeAdvantages(werkzeug);
+
+		// Sonderfertigkeiten
+		cache.synchronizeSpecialAbilities(werkzeug);
+
+		// Zauber
+		cache.synchronizeSpells(werkzeug);
 	}
 
 	public String getHeroName()

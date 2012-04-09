@@ -1,6 +1,5 @@
 package de.martindreier.heldenweb.export.ui;
 
-import helden.Fehlermeldung;
 import java.awt.GridLayout;
 import java.awt.Window;
 import java.util.HashMap;
@@ -244,7 +243,7 @@ public class SettingsDialog extends AbstractDialog implements ISaveCallback
 		}
 		catch (HeldenWebExportException exception)
 		{
-			new Fehlermeldung().handle(exception);
+			HeldenWebFehler.handleError(this, "Einstellungen konnten nicht gespeichert werden", exception);
 		}
 		return true;
 	}

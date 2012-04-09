@@ -1,6 +1,5 @@
 package de.martindreier.heldenweb.export.ui;
 
-import helden.Fehlermeldung;
 import helden.plugin.werteplugin2.PluginHeld2;
 import helden.plugin.werteplugin3.PluginHeldenWerteWerkzeug3;
 import javax.swing.JFrame;
@@ -30,8 +29,7 @@ public class ExportUIController
 		}
 		catch (HeldenWebExportException exception)
 		{
-			Fehlermeldung meldung = new Fehlermeldung();
-			meldung.handle(exception);
+			HeldenWebFehler.handleError(null, "Fehler beim Öffenen des Export-Dialogs", exception);
 		}
 	}
 }

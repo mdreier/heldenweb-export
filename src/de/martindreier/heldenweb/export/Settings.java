@@ -1,6 +1,5 @@
 package de.martindreier.heldenweb.export;
 
-import helden.Fehlermeldung;
 import helden.framework.Einstellungen;
 import helden.framework.pfadeEinstellungen.PfadNichtGefundenException;
 import java.io.File;
@@ -12,23 +11,23 @@ import java.io.Writer;
 import java.text.MessageFormat;
 import java.util.Date;
 import java.util.Properties;
+import de.martindreier.heldenweb.export.ui.HeldenWebFehler;
 
 public class Settings
 {
-	private static Settings							instance;
-	private static final String					SETTINGS_PATH			= "pluginPfad";
-	private static final String					SETTINGS_FILE			= "heldenWebExport.properties";
-	private static final Fehlermeldung	FEHLER						= new Fehlermeldung();
-	private static final String					SETTING_SERVER		= "server";
-	private static final String					SETTING_PORT			= "port";
-	private static final String					SETTING_PATH			= "path";
-	private static final String					SETTING_USER			= "username";
-	private static final String					SETTING_PASSWORD	= "password";
+	private static Settings					instance;
+	private static final String			SETTINGS_PATH			= "pluginPfad";
+	private static final String			SETTINGS_FILE			= "heldenWebExport.properties";
+	private static final String			SETTING_SERVER		= "server";
+	private static final String			SETTING_PORT			= "port";
+	private static final String			SETTING_PATH			= "path";
+	private static final String			SETTING_USER			= "username";
+	private static final String			SETTING_PASSWORD	= "password";
 
-	private File												settingsFile;
-	private Properties									settings;
+	private File										settingsFile;
+	private Properties							settings;
 
-	private static final Properties			DEFAULT_SETTINGS	= new Properties();
+	private static final Properties	DEFAULT_SETTINGS	= new Properties();
 
 	static
 	{
@@ -106,7 +105,7 @@ public class Settings
 					}
 					catch (IOException exception)
 					{
-						FEHLER.handle(exception);
+						HeldenWebFehler.handleError(null, "Fehler beim Schließen des Datenstroms", exception);
 					}
 				}
 			}
@@ -142,7 +141,7 @@ public class Settings
 			}
 			catch (IOException exception)
 			{
-				FEHLER.handle(exception);
+				HeldenWebFehler.handleError(null, "Fehler beim Schließen des Datenstroms", exception);
 			}
 		}
 	}

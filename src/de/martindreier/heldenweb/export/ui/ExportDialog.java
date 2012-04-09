@@ -93,7 +93,7 @@ public class ExportDialog extends AbstractDialog
 	@Override
 	protected void createActions()
 	{
-		syncAction = new SyncAction(synchronizer);
+		syncAction = new SyncAction(this, synchronizer);
 		closeAction = new CloseAction(this);
 		optionsAction = new OptionsAction(this);
 	}
