@@ -66,7 +66,7 @@ public class ExportDialog extends AbstractDialog
 	protected void createDialogArea(JPanel parent)
 	{
 		JPanel mainPanel = new JPanel();
-		mainPanel.setLayout(new BorderLayout());
+		mainPanel.setLayout(new BorderLayout(10, 10));
 
 		// Hero information
 		JLabel label = new JLabel();

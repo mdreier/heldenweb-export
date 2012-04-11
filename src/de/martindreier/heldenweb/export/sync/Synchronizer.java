@@ -32,6 +32,7 @@ public class Synchronizer
 	{
 		werkzeug.setAktivenHeld(werkzeug.getSelectesHeld());
 		syncBaseData();
+		syncHeld();
 	}
 
 	/**
@@ -70,10 +71,16 @@ public class Synchronizer
 		cache.synchronizeAdvantages(werkzeug);
 
 		// Sonderfertigkeiten
-		cache.synchronizeSpecialAbilities(werkzeug);
+		// Disabled because of bug.
+		// cache.synchronizeSpecialAbilities(werkzeug);
 
 		// Zauber
 		cache.synchronizeSpells(werkzeug);
+	}
+
+	private void syncHeld() throws HeldenWebExportException
+	{
+		cache.synchronizeHeroData(werkzeug);
 	}
 
 	public String getHeroName()
