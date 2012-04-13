@@ -887,7 +887,7 @@ public class Cache
 				{
 					if (((Map) value).get(innerKey).toString().trim().equals(""))
 					{
-						((Map) value).put(innerKey, "&nbsp;");
+						((Map) value).put(innerKey, " ");
 					}
 				}
 			}
@@ -895,7 +895,7 @@ public class Cache
 			{
 				if (data.get(key).toString().trim().equals(""))
 				{
-					data.put(key, "&nbsp;");
+					data.put(key, " ");
 				}
 			}
 		}

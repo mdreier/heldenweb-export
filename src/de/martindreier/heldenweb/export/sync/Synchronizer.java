@@ -18,6 +18,7 @@ public class Synchronizer
 	private PluginHeldenWerteWerkzeug3	werkzeug;
 	private HttpClient									client;
 	private Cache												cache;
+	private boolean											skipSpecialAbilities	= false;
 
 	public Synchronizer(PluginHeld2[] helden, PluginHeldenWerteWerkzeug3 werkzeug)
 	{
@@ -71,8 +72,18 @@ public class Synchronizer
 		cache.synchronizeAdvantages(werkzeug);
 
 		// Sonderfertigkeiten
-		// Disabled because of bug.
-		// cache.synchronizeSpecialAbilities(werkzeug);
+		if (!skipSpecialAbilities)
+		{
+			try
+			{
+				cache.synchronizeSpecialAbilities(werkzeug);
+			}
+			catch (StackOverflowError e)
+			{
+				// Sonderbehandlung für Fehler in alten Versionen der Helden-Software
+				skipSpecialAbilities = true;
+			}
+		}
 
 		// Zauber
 		cache.synchronizeSpells(werkzeug);

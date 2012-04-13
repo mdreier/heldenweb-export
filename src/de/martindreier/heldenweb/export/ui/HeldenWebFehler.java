@@ -5,8 +5,6 @@ import java.awt.Window;
 import java.text.MessageFormat;
 import java.util.HashSet;
 import java.util.Set;
-import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -29,7 +27,7 @@ import de.martindreier.heldenweb.export.ui.actions.CloseAction;
  * @author Martin Dreier <martin@martindreier.de>
  * 
  */
-public class HeldenWebFehler extends JDialog
+public class HeldenWebFehler extends AbstractDialog
 {
 
 	/**
@@ -51,13 +49,12 @@ public class HeldenWebFehler extends JDialog
 	public static void handleError(Window parent, String message, Throwable exception)
 	{
 		final HeldenWebFehler fehlerDialog = new HeldenWebFehler(parent, message, exception);
-		fehlerDialog.init();
 		new Thread(new Runnable()
 		{
 			@Override
 			public void run()
 			{
-				fehlerDialog.setVisible(true);
+				fehlerDialog.open();
 			}
 		}).start();
 	}
@@ -74,65 +71,13 @@ public class HeldenWebFehler extends JDialog
 	 * Listeners to the model.
 	 */
 	private Set<TreeModelListener>	listeners	= new HashSet<TreeModelListener>();
+	private CloseAction							closeAction;
 
 	private HeldenWebFehler(Window parent, String message, Throwable exception)
 	{
-		super(parent, "HeldenWeb Export - Fehler", ModalityType.APPLICATION_MODAL);
+		super(parent, "HeldenWeb Export - Fehler");
 		this.message = message;
 		this.exception = exception;
-	}
-
-	/**
-	 * Initialize the dialog.
-	 */
-	private void init()
-	{
-		// Main panel
-		JPanel mainPanel = new JPanel(new BorderLayout(5, 5));
-
-		// Top panel with error message
-		JPanel top = new JPanel();
-		top.add(new JLabel(message));
-		mainPanel.add(top, BorderLayout.NORTH);
-
-		// Center panel with exception tree and stack trace.
-		if (exception != null)
-		{
-			JSplitPane exceptions = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-			final JTree tree = new JTree(new ErrorModel());
-			tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-			final JList stackTrace = new JList(new StackTraceModel(exception));
-			stackTrace.setVisibleRowCount(10);
-			JScrollPane stackPane = new JScrollPane(stackTrace);
-			// stackPane.add(stackTrace);
-
-			// Update stack trace when exception selection changes
-			tree.addTreeSelectionListener(new TreeSelectionListener()
-			{
-				@Override
-				public void valueChanged(TreeSelectionEvent e)
-				{
-					Object selection = tree.getLastSelectedPathComponent();
-					if (selection instanceof Throwable)
-					{
-						stackTrace.setModel(new StackTraceModel((Throwable) selection));
-					}
-				}
-			});
-
-			exceptions.add(tree, JSplitPane.TOP);
-			exceptions.add(stackPane, JSplitPane.BOTTOM);
-			mainPanel.add(exceptions);
-		}
-
-		// Bottom panel with close button
-		JPanel buttons = new JPanel();
-		buttons.add(new JButton(new CloseAction(this)));
-		mainPanel.add(buttons, BorderLayout.SOUTH);
-
-		// Finish dialog
-		getContentPane().add(mainPanel);
-		pack();
 	}
 
 	/**
@@ -316,5 +261,62 @@ public class HeldenWebFehler extends JDialog
 			listeners.remove(l);
 		}
 
+	}
+
+	@Override
+	protected void createActions()
+	{
+		closeAction = new CloseAction(this);
+	}
+
+	@Override
+	protected void createDialogArea(JPanel root)
+	{
+		// Main panel
+		JPanel mainPanel = new JPanel(new BorderLayout(5, 5));
+
+		// Top panel with error message
+		JPanel top = new JPanel();
+		top.add(new JLabel(message));
+		mainPanel.add(top, BorderLayout.NORTH);
+
+		// Center panel with exception tree and stack trace.
+		if (exception != null)
+		{
+			JSplitPane exceptions = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+			final JTree tree = new JTree(new ErrorModel());
+			tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+			final JList stackTrace = new JList(new StackTraceModel(exception));
+			stackTrace.setVisibleRowCount(10);
+			JScrollPane stackPane = new JScrollPane(stackTrace);
+			// stackPane.add(stackTrace);
+
+			// Update stack trace when exception selection changes
+			tree.addTreeSelectionListener(new TreeSelectionListener()
+			{
+				@Override
+				public void valueChanged(TreeSelectionEvent e)
+				{
+					Object selection = tree.getLastSelectedPathComponent();
+					if (selection instanceof Throwable)
+					{
+						stackTrace.setModel(new StackTraceModel((Throwable) selection));
+					}
+				}
+			});
+
+			exceptions.add(tree, JSplitPane.TOP);
+			exceptions.add(stackPane, JSplitPane.BOTTOM);
+			mainPanel.add(exceptions);
+		}
+
+		// Finish dialog
+		root.add(mainPanel);
+	}
+
+	@Override
+	protected void addButtonsToButtonBar(ButtonBar buttonBar)
+	{
+		buttonBar.addButton(closeAction);
 	}
 }

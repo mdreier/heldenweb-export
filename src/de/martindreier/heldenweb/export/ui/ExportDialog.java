@@ -8,12 +8,12 @@ import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.text.MessageFormat;
 import javax.swing.Action;
-import javax.swing.Box;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import de.martindreier.heldenweb.export.sync.Synchronizer;
 import de.martindreier.heldenweb.export.ui.actions.CloseAction;
 import de.martindreier.heldenweb.export.ui.actions.OptionsAction;
@@ -67,10 +67,12 @@ public class ExportDialog extends AbstractDialog
 	{
 		JPanel mainPanel = new JPanel();
 		mainPanel.setLayout(new BorderLayout(10, 10));
+		// mainPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 
 		// Hero information
 		JLabel label = new JLabel();
 		label.setText(MessageFormat.format("Exportiere {0} nach HeldenWeb", synchronizer.getHeroName()));
+		label.setHorizontalAlignment(SwingConstants.CENTER);
 		mainPanel.add(label, BorderLayout.PAGE_START);
 
 		// Synchronize button
@@ -99,10 +101,10 @@ public class ExportDialog extends AbstractDialog
 	}
 
 	@Override
-	protected void addButtonsToButtonBar(Box buttonBar)
+	protected void addButtonsToButtonBar(ButtonBar buttonBar)
 	{
 		// buttonBar.add(new JButton(syncAction));
-		buttonBar.add(new JButton(optionsAction));
-		buttonBar.add(new JButton(closeAction));
+		buttonBar.addButton(optionsAction);
+		buttonBar.addButton(closeAction);
 	}
 }

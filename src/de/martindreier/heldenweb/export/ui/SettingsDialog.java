@@ -5,8 +5,6 @@ import java.awt.Window;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.Action;
-import javax.swing.Box;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
@@ -252,9 +250,9 @@ public class SettingsDialog extends AbstractDialog implements ISaveCallback
 	 * @see de.martindreier.heldenweb.export.ui.AbstractDialog#addButtonsToButtonBar(javax.swing.JPanel)
 	 */
 	@Override
-	protected void addButtonsToButtonBar(Box buttonBar)
+	protected void addButtonsToButtonBar(ButtonBar buttonBar)
 	{
-		buttonBar.add(new JButton(saveAction));
-		buttonBar.add(new JButton(closeAction));
+		buttonBar.addButton(saveAction);
+		buttonBar.addButton(closeAction);
 	}
 }

@@ -3,10 +3,14 @@ package de.martindreier.heldenweb.export.ui;
 import java.awt.BorderLayout;
 import java.awt.Point;
 import java.awt.Window;
+import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
 
 public abstract class AbstractDialog extends JDialog
 {
@@ -48,6 +52,7 @@ public abstract class AbstractDialog extends JDialog
 		JPanel root = new JPanel();
 		getContentPane().add(root);
 		root.setLayout(new BorderLayout(5, 5));
+		root.setBorder(new EmptyBorder(5, 5, 5, 5));
 
 		// Actions
 		createActions();
@@ -82,11 +87,64 @@ public abstract class AbstractDialog extends JDialog
 	private void createButtonBar(JPanel parent)
 	{
 		Box buttonBar = new Box(BoxLayout.LINE_AXIS);
-		buttonBar.setAlignmentX(0.5f);
+		buttonBar.setBorder(new EmptyBorder(5, 10, 5, 10));
 
-		addButtonsToButtonBar(buttonBar);
+		addButtonsToButtonBar(new ButtonBar(buttonBar));
 
 		parent.add(buttonBar, BorderLayout.PAGE_END);
+	}
+
+	/**
+	 * Wrapper for the button bar.
+	 * 
+	 * @author Martin Dreier <martin@martindreier.de>
+	 * 
+	 */
+	protected class ButtonBar
+	{
+
+		/**
+		 * The button bar control.
+		 */
+		private Box	buttonBar;
+
+		private ButtonBar(Box buttonBar)
+		{
+			this.buttonBar = buttonBar;
+		}
+
+		/**
+		 * Add a new button.
+		 * 
+		 * @param button
+		 *          The button.
+		 */
+		public void addButton(JButton button)
+		{
+			button.setBorder(new CompoundBorder(new EmptyBorder(0, 5, 0, 5), button.getBorder()));
+			buttonBar.add(button);
+		}
+
+		/**
+		 * Add a new button.
+		 * 
+		 * @param action
+		 *          The action which is called when the button is selected.
+		 */
+		public void addButton(Action action)
+		{
+			addButton(new JButton(action));
+		}
+
+		/**
+		 * Get the button bar control.
+		 * 
+		 * @return The button bar control.
+		 */
+		public Box getButtonBarControl()
+		{
+			return buttonBar;
+		}
 	}
 
 	/**
@@ -95,7 +153,7 @@ public abstract class AbstractDialog extends JDialog
 	 * @param buttonBar
 	 *          The button bar container.
 	 */
-	protected abstract void addButtonsToButtonBar(Box buttonBar);
+	protected abstract void addButtonsToButtonBar(ButtonBar buttonBar);
 
 	/**
 	 * Initialize and open the dialog.
