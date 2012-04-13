@@ -7,8 +7,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import de.martindreier.heldenweb.export.HeldenWebExportException;
 import de.martindreier.heldenweb.export.Settings;
+import de.martindreier.heldenweb.export.sync.Cache.CacheKey;
 
 public class Synchronizer
 {
@@ -92,6 +94,15 @@ public class Synchronizer
 	private void syncHeld() throws HeldenWebExportException
 	{
 		cache.synchronizeHeroData(werkzeug);
+		UUID heldId = cache.getKey(CacheKey.HELD, werkzeug.getSelectesHeld().toString());
+		cache.synchronizeHeroAttributes(heldId, werkzeug);
+		if (!skipSpecialAbilities)
+		{
+			cache.synchronizeHeroSpecialAbilities(heldId, werkzeug);
+		}
+		cache.synchronizeHeroSpecialTalents(heldId, werkzeug);
+		cache.synchronizeHeroSpecialAdvantages(heldId, werkzeug);
+		cache.synchronizeHeroSpecialSpells(heldId, werkzeug);
 	}
 
 	public String getHeroName()

@@ -4,12 +4,12 @@ import java.awt.BorderLayout;
 import java.awt.Point;
 import java.awt.Window;
 import javax.swing.Action;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
+import javax.swing.GroupLayout;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.GroupLayout.ParallelGroup;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 
 public abstract class AbstractDialog extends JDialog
@@ -86,10 +86,12 @@ public abstract class AbstractDialog extends JDialog
 	 */
 	private void createButtonBar(JPanel parent)
 	{
-		Box buttonBar = new Box(BoxLayout.LINE_AXIS);
+		JPanel buttonBar = new JPanel();
+		GroupLayout layout = new GroupLayout(buttonBar);
 		buttonBar.setBorder(new EmptyBorder(5, 10, 5, 10));
+		ParallelGroup group = layout.createParallelGroup(Alignment.CENTER, true);
 
-		addButtonsToButtonBar(new ButtonBar(buttonBar));
+		addButtonsToButtonBar(new ButtonBar(group));
 
 		parent.add(buttonBar, BorderLayout.PAGE_END);
 	}
@@ -106,11 +108,13 @@ public abstract class AbstractDialog extends JDialog
 		/**
 		 * The button bar control.
 		 */
-		private Box	buttonBar;
+		private ParallelGroup	buttonBar;
 
-		private ButtonBar(Box buttonBar)
+		private boolean				firstComponent	= true;
+
+		private ButtonBar(ParallelGroup group)
 		{
-			this.buttonBar = buttonBar;
+			this.buttonBar = group;
 		}
 
 		/**
@@ -121,8 +125,17 @@ public abstract class AbstractDialog extends JDialog
 		 */
 		public void addButton(JButton button)
 		{
-			button.setBorder(new CompoundBorder(new EmptyBorder(0, 5, 0, 5), button.getBorder()));
-			buttonBar.add(button);
+			if (firstComponent)
+			{
+				firstComponent = false;
+			}
+			else
+			{
+				buttonBar.addGap(5);
+			}
+			// button.setBorder(new CompoundBorder(new EmptyBorder(0, 5, 0, 5),
+			// button.getBorder()));
+			buttonBar.addComponent(button);
 		}
 
 		/**
@@ -134,16 +147,6 @@ public abstract class AbstractDialog extends JDialog
 		public void addButton(Action action)
 		{
 			addButton(new JButton(action));
-		}
-
-		/**
-		 * Get the button bar control.
-		 * 
-		 * @return The button bar control.
-		 */
-		public Box getButtonBarControl()
-		{
-			return buttonBar;
 		}
 	}
 

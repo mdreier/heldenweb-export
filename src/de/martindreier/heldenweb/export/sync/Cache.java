@@ -56,9 +56,9 @@ public class Cache
 	 * @author Martin Dreier <martin@martindreier.de>
 	 * 
 	 */
-	private static enum CacheKey
+	public static enum CacheKey
 	{
-		TALENT, EIGENSCHAFT, TALENTART, VORTEIL, SONDERFERTIGKEIT, ZAUBER, HELD
+		TALENT, EIGENSCHAFT, TALENTART, VORTEIL, SONDERFERTIGKEIT, ZAUBER, HELD, HELD_TALENT, HELD_VORTEIL, HELD_SONDERFERTIGKEIT, HELD_ZAUBER
 	};
 
 	/**
@@ -899,5 +899,73 @@ public class Cache
 				}
 			}
 		}
+	}
+
+	public void synchronizeHeroSpecialAbilities(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+					throws HeldenWebExportException
+	{
+		try
+		{
+			getIdsFromServer(CacheKey.HELD_SONDERFERTIGKEIT, "heldenSonderfertigkeit", "HeldenSonderfertigkeiten.xml", false,
+							"held_id", "sonderfertigkeit_id");
+		}
+		catch (HeldenWebExportException exception)
+		{
+			throw new HeldenWebExportException("Helden-Sonderfertigkeiten konnten nicht vom Server gelesen werden", exception);
+		}
+
+		String[] sonderfertigkeiten = werkzeug.getSonderfertigkeitenAlsString();
+		for (String specialAbility : sonderfertigkeiten)
+		{
+			UUID specialAbilityId = getKey(CacheKey.SONDERFERTIGKEIT, specialAbility);
+			String specialization = werkzeug.getSonderfertigkeit(specialAbility).getSpezialisierung();
+			sendSpecialAbilityMappingToServer(heroId, specialAbilityId, specialization);
+		}
+		sendHeroToServer(werkzeug);
+	}
+
+	private void sendSpecialAbilityMappingToServer(UUID heroId, UUID specialAbilityId, String specialization)
+					throws HeldenWebExportException
+	{
+		Map<String, String> data = new HashMap<String, String>();
+		data.put("held_id", heroId.toString());
+		data.put("sonderfertigkeit_id", specialAbilityId.toString());
+		data.put("spezialisierung", specialization);
+
+		UUID key = getKey(CacheKey.HELD_SONDERFERTIGKEIT, heroId.toString(), specialAbilityId.toString());
+		if (key == null)
+		{
+			key = sendToServer("heldenSonderfertigkeit", data, "HeldenSonderfertigkeiten.xml", "/heldenSonderfertigkeit/id");
+			keys.put(CacheKey.HELD_SONDERFERTIGKEIT + heroId.toString() + specialAbilityId.toString(), key);
+		}
+		else
+		{
+			sendToServer("heldenSonderfertigkeit", data, "HeldenSonderfertigkeiten/" + key.toString() + ".xml",
+							"/heldenSonderfertigkeit/id");
+		}
+	}
+
+	public void synchronizeHeroSpecialTalents(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	{
+		// TODO Auto-generated method stub
+
+	}
+
+	public void synchronizeHeroSpecialAdvantages(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	{
+		// TODO Auto-generated method stub
+
+	}
+
+	public void synchronizeHeroSpecialSpells(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	{
+		// TODO Auto-generated method stub
+
+	}
+
+	public void synchronizeHeroAttributes(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug)
+	{
+		// TODO Auto-generated method stub
+
 	}
 }
