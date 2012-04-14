@@ -94,15 +94,15 @@ public class Synchronizer
 	private void syncHeld() throws HeldenWebExportException
 	{
 		cache.synchronizeHeroData(werkzeug);
-		UUID heldId = cache.getKey(CacheKey.HELD, werkzeug.getSelectesHeld().toString());
+		UUID heldId = cache.getKey(CacheKey.HELD, werkzeug.getHeldenID());
 		cache.synchronizeHeroAttributes(heldId, werkzeug);
 		if (!skipSpecialAbilities)
 		{
 			cache.synchronizeHeroSpecialAbilities(heldId, werkzeug);
 		}
-		cache.synchronizeHeroSpecialTalents(heldId, werkzeug);
-		cache.synchronizeHeroSpecialAdvantages(heldId, werkzeug);
-		cache.synchronizeHeroSpecialSpells(heldId, werkzeug);
+		cache.synchronizeHeroTalents(heldId, werkzeug);
+		cache.synchronizeHeroAdvantages(heldId, werkzeug);
+		cache.synchronizeHeroSpells(heldId, werkzeug);
 	}
 
 	public String getHeroName()

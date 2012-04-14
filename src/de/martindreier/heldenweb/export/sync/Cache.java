@@ -58,7 +58,7 @@ public class Cache
 	 */
 	public static enum CacheKey
 	{
-		TALENT, EIGENSCHAFT, TALENTART, VORTEIL, SONDERFERTIGKEIT, ZAUBER, HELD, HELD_TALENT, HELD_VORTEIL, HELD_SONDERFERTIGKEIT, HELD_ZAUBER
+		TALENT, EIGENSCHAFT, TALENTART, VORTEIL, SONDERFERTIGKEIT, ZAUBER, HELD, HELD_TALENT, HELD_VORTEIL, HELD_SONDERFERTIGKEIT, HELD_ZAUBER, HELD_EIGENSCHAFT
 	};
 
 	/**
@@ -181,6 +181,12 @@ public class Cache
 		{
 			// Post the data to the server
 			Response response = client.post(url, null, "application/xml", document);
+			if (response.getResponseCode() != 200)
+			{
+				throw new HeldenWebExportException(MessageFormat.format(
+								"Daten konnten nicht zum Server gesendet werden: {0} ({1})", response.getResponseMessage(),
+								response.getResponseCode()));
+			}
 			// Parse the response
 			Document talentsDocument = parseXML(response.getResponseContent());
 			// Get the UUID
@@ -360,7 +366,8 @@ public class Cache
 	 * @param url
 	 *          The URL where the data is requested.
 	 * @param useDefaultIdentifier
-	 *          Use the field "name" as the identifier for the object.
+	 *          Use the field "name" as the identifier for the object. Fallback is
+	 *          "id" if name is not in result document.
 	 * @param additionalIdentifiers
 	 *          Additional identifying elements. These are added to the cache key.
 	 *          The order of these is preserved.
@@ -422,7 +429,7 @@ public class Cache
 				}
 
 				// Check for completeness and parse id
-				if (name == null || id == null)
+				if (id == null)
 				{
 					throw new HeldenWebExportException("Dokument ist nicht vollständig");
 				}
@@ -438,7 +445,14 @@ public class Cache
 				StringBuilder compoundName = new StringBuilder();
 				if (useDefaultIdentifier)
 				{
-					compoundName.append(name);
+					if (name != null)
+					{
+						compoundName.append(name);
+					}
+					else
+					{
+						compoundName.append(id);
+					}
 				}
 				for (String additionalId : additionalIdentifiers)
 				{
@@ -866,11 +880,12 @@ public class Cache
 
 		if (update)
 		{
-			sendToServer("held", objectData, "Helden/" + heroId.toString() + ".xml", "/held/id");
+			objectData.put("id", heroId.toString());
+			sendToServer("Held", objectData, "Helden/edit/" + heroId.toString() + ".xml", "/held/id");
 		}
 		else
 		{
-			heroId = sendToServer("held", objectData, "Helden.xml", "/held/id");
+			heroId = sendToServer("Held", objectData, "Helden.xml", "/held/id");
 			keys.put(CacheKey.HELD + heroIdentifier, heroId);
 		}
 	}
@@ -904,68 +919,188 @@ public class Cache
 	public void synchronizeHeroSpecialAbilities(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
 					throws HeldenWebExportException
 	{
-		try
-		{
-			getIdsFromServer(CacheKey.HELD_SONDERFERTIGKEIT, "heldenSonderfertigkeit", "HeldenSonderfertigkeiten.xml", false,
-							"held_id", "sonderfertigkeit_id");
-		}
-		catch (HeldenWebExportException exception)
-		{
-			throw new HeldenWebExportException("Helden-Sonderfertigkeiten konnten nicht vom Server gelesen werden", exception);
-		}
+		getIdsFromServer(CacheKey.HELD_SONDERFERTIGKEIT, "heldenSonderfertigkeit", "HeldenSonderfertigkeiten.xml",
+						"Helden-Sonderfertigkeiten", false, "held_id", "sonderfertigkeit_id");
 
 		String[] sonderfertigkeiten = werkzeug.getSonderfertigkeitenAlsString();
 		for (String specialAbility : sonderfertigkeiten)
 		{
 			UUID specialAbilityId = getKey(CacheKey.SONDERFERTIGKEIT, specialAbility);
 			String specialization = werkzeug.getSonderfertigkeit(specialAbility).getSpezialisierung();
-			sendSpecialAbilityMappingToServer(heroId, specialAbilityId, specialization);
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heroId.toString());
+			data.put("sonderfertigkeit_id", specialAbilityId.toString());
+			data.put("spezialisierung", specialization);
+			sendMappingToServer(CacheKey.HELD_SONDERFERTIGKEIT, heroId, specialAbilityId, data, "HeldenSonderfertigkeit",
+							"HeldenSonderfertigkeiten");
 		}
-		sendHeroToServer(werkzeug);
 	}
 
-	private void sendSpecialAbilityMappingToServer(UUID heroId, UUID specialAbilityId, String specialization)
-					throws HeldenWebExportException
+	/**
+	 * Read all current IDs from the server and put them in the cache.
+	 * 
+	 * @param cacheKey
+	 *          The cache key for this type of data.
+	 * @param elementName
+	 *          The element name in the resulting XML document.
+	 * @param url
+	 *          The URL where the data is requested.
+	 * @param errorLabel
+	 *          Object name for the error message if an exception occurred.
+	 * @param useDefaultIdentifier
+	 *          Use the field "name" as the identifier for the object.
+	 * @param additionalIdentifiers
+	 *          Additional identifying elements. These are added to the cache key.
+	 *          The order of these is preserved.
+	 * @throws HeldenWebExportException
+	 *           Error while reading the data from the server.
+	 */
+	private void getIdsFromServer(CacheKey cacheKey, String elementName, String url, String errorLabel,
+					boolean useDefaultIdentifier, String... additionalIdentifiers) throws HeldenWebExportException
 	{
-		Map<String, String> data = new HashMap<String, String>();
-		data.put("held_id", heroId.toString());
-		data.put("sonderfertigkeit_id", specialAbilityId.toString());
-		data.put("spezialisierung", specialization);
+		try
+		{
+			getIdsFromServer(cacheKey, elementName, url, useDefaultIdentifier, additionalIdentifiers);
+		}
+		catch (HeldenWebExportException exception)
+		{
+			throw new HeldenWebExportException(
+							MessageFormat.format("{0} konnten nicht vom Server gelesen werden", errorLabel), exception);
+		}
+	}
 
-		UUID key = getKey(CacheKey.HELD_SONDERFERTIGKEIT, heroId.toString(), specialAbilityId.toString());
+	public void synchronizeHeroTalents(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug) throws HeldenWebExportException
+	{
+		getIdsFromServer(CacheKey.HELD_TALENT, "heldentalent", "HeldenTalenten.xml", "Helden-Talente", false, "held_id",
+						"talent_id");
+
+		String[] talente = werkzeug.getTalenteAlsString();
+		for (String talentName : talente)
+		{
+			UUID talentId = getKey(CacheKey.TALENT, talentName);
+			if (talentId == null)
+			{
+				throw new HeldenWebExportException(MessageFormat.format("Held referenziert unbekanntes Talent {0}", talentName));
+			}
+			PluginTalent talent = werkzeug.getTalent(talentName);
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heroId.toString());
+			data.put("talent_id", talentId.toString());
+			data.put("talentwert", Integer.toString(werkzeug.getTalentwert(talent)));
+			data.put("attacke", Integer.toString(werkzeug.getAttacke(talent)));
+			data.put("parade", Integer.toString(werkzeug.getParade(talent)));
+			data.put("behinderung", talent.getBehinderung());
+			sendMappingToServer(CacheKey.HELD_TALENT, heroId, talentId, data, "HeldenTalent", "HeldenTalenten");
+		}
+	}
+
+	/**
+	 * Send hero->object mapping to the server.
+	 * 
+	 * @param cacheKey
+	 *          Cache key identifier.
+	 * @param heroId
+	 *          The hero ID.
+	 * @param objectId
+	 *          The object's ID.
+	 * @param data
+	 *          The data to be sent to the server.
+	 * @param rootElementName
+	 *          The root element name in the generated XML.
+	 * @param url
+	 *          The URL, without trailing &quot;.xml&quot;.
+	 * @throws HeldenWebExportException
+	 */
+	private void sendMappingToServer(CacheKey cacheKey, UUID heroId, UUID objectId, Map<String, String> data,
+					String rootElementName, String url) throws HeldenWebExportException
+	{
+		// Cut off extension
+		if (url.endsWith(".xml"))
+		{
+			url = url.substring(0, url.length() - 4);
+		}
+		UUID key = getKey(cacheKey, heroId.toString(), objectId.toString());
 		if (key == null)
 		{
-			key = sendToServer("heldenSonderfertigkeit", data, "HeldenSonderfertigkeiten.xml", "/heldenSonderfertigkeit/id");
-			keys.put(CacheKey.HELD_SONDERFERTIGKEIT + heroId.toString() + specialAbilityId.toString(), key);
+			key = sendToServer(rootElementName, data, url + ".xml", "/" + rootElementName.toLowerCase() + "/id");
+			keys.put(cacheKey + heroId.toString() + objectId.toString(), key);
 		}
 		else
 		{
-			sendToServer("heldenSonderfertigkeit", data, "HeldenSonderfertigkeiten/" + key.toString() + ".xml",
-							"/heldenSonderfertigkeit/id");
+			data.put("id", key.toString());
+			sendToServer(rootElementName, data, url + "/edit/" + key.toString() + ".xml", "/" + rootElementName.toLowerCase()
+							+ "/id");
 		}
 	}
 
-	public void synchronizeHeroSpecialTalents(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	public void synchronizeHeroAdvantages(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+					throws HeldenWebExportException
 	{
-		// TODO Auto-generated method stub
+		getIdsFromServer(CacheKey.HELD_VORTEIL, "heldenvorteil", "HeldenVorteilen.xml", "Helden-Vorteile", false,
+						"held_id", "vorteil_id");
 
+		String[] vorteile = werkzeug.getVorteileAlsString();
+		for (String vorteilName : vorteile)
+		{
+			UUID vorteilId = getKey(CacheKey.VORTEIL, vorteilName);
+			if (vorteilId == null)
+			{
+				throw new HeldenWebExportException(MessageFormat.format("Held referenziert unbekannten Vorteil {0}",
+								vorteilName));
+			}
+			PluginVorteil vorteil = werkzeug.getVorteil(vorteilName);
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heroId.toString());
+			data.put("vorteil_id", vorteilId.toString());
+			data.put("wert", Integer.toString(vorteil.getWert()));
+			sendMappingToServer(CacheKey.HELD_VORTEIL, heroId, vorteilId, data, "HeldenVorteil", "HeldenVorteilen");
+		}
 	}
 
-	public void synchronizeHeroSpecialAdvantages(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	public void synchronizeHeroSpells(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug) throws HeldenWebExportException
 	{
-		// TODO Auto-generated method stub
+		getIdsFromServer(CacheKey.HELD_ZAUBER, "heldenzauber", "HeldenZauber.xml", "Helden-Zauber", false, "held_id",
+						"zauber_id");
 
+		String[][] spells = werkzeug.getZauberAlsString();
+		for (String[] spellData : spells)
+		{
+			UUID spellId = getKey(CacheKey.VORTEIL, spellData[0], spellData[1]);
+			if (spellId == null)
+			{
+				throw new HeldenWebExportException(MessageFormat.format(
+								"Held referenziert unbekannten Zauber {0} in Repräsentation {1}", spellData[0], spellData[1]));
+			}
+			PluginZauber3 spell = werkzeug.getZauber(spellData[0], spellData[1]);
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heroId.toString());
+			data.put("zauber_id", spellId.toString());
+			data.put("zauberfertigkeitswert", Integer.toString(werkzeug.getZauberInfo(spell).getZauberfertigkeitsWert()));
+			sendMappingToServer(CacheKey.HELD_ZAUBER, heroId, spellId, data, "HeldenZauber", "HeldenZauber");
+		}
 	}
 
-	public void synchronizeHeroSpecialSpells(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	public void synchronizeHeroAttributes(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+					throws HeldenWebExportException
 	{
-		// TODO Auto-generated method stub
+		getIdsFromServer(CacheKey.HELD_EIGENSCHAFT, "eigenschaftenheld", "EigenschaftenHelden.xml", "Helden-Eigenschaften",
+						false, "held_id", "eigenschaft_id");
 
-	}
-
-	public void synchronizeHeroAttributes(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug)
-	{
-		// TODO Auto-generated method stub
-
+		String[] attributes = werkzeug.getEigenschaftsbezeichner();
+		for (String attributeName : attributes)
+		{
+			UUID attributeId = getKey(CacheKey.EIGENSCHAFT, attributeName);
+			if (attributeId == null)
+			{
+				throw new HeldenWebExportException(MessageFormat.format("Held referenziert unbekannte Eigenschaft {0}",
+								attributeName));
+			}
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heroId.toString());
+			data.put("eigenschaft_id", attributeId.toString());
+			data.put("wert", Integer.toString(werkzeug.getEigenschaftswert(attributeName)));
+			sendMappingToServer(CacheKey.HELD_EIGENSCHAFT, heroId, attributeId, data, "EigenschaftenHeld",
+							"EigenschaftenHelden");
+		}
 	}
 }

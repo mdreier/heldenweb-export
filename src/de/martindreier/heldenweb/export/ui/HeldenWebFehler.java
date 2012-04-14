@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Window;
 import java.text.MessageFormat;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -285,11 +287,13 @@ public class HeldenWebFehler extends AbstractDialog
 		{
 			JSplitPane exceptions = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 			final JTree tree = new JTree(new ErrorModel());
+			Object[] exceptionStack = getAllParentExceptions();
+			tree.expandPath(new TreePath(exceptionStack));
 			tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+			tree.setVisibleRowCount(exceptionStack.length);
 			final JList stackTrace = new JList(new StackTraceModel(exception));
 			stackTrace.setVisibleRowCount(10);
 			JScrollPane stackPane = new JScrollPane(stackTrace);
-			// stackPane.add(stackTrace);
 
 			// Update stack trace when exception selection changes
 			tree.addTreeSelectionListener(new TreeSelectionListener()
@@ -312,6 +316,19 @@ public class HeldenWebFehler extends AbstractDialog
 
 		// Finish dialog
 		root.add(mainPanel);
+	}
+
+	private Object[] getAllParentExceptions()
+	{
+		List<Throwable> parents = new LinkedList<Throwable>();
+		parents.add(exception);
+		Throwable parent = exception.getCause();
+		while (parent != null)
+		{
+			parents.add(parent);
+			parent = parent.getCause();
+		}
+		return parents.toArray();
 	}
 
 	@Override

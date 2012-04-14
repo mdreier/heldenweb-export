@@ -156,26 +156,29 @@ public class HttpClient
 			response.responseMessage = connection.getResponseMessage();
 			response.responseHeaders = connection.getHeaderFields();
 
-			// Read data from server
-			InputStream in = null;
-			try
+			if (response.resonseCode < 500)
 			{
-				in = connection.getInputStream();
-				BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-				String line = null;
-				StringBuilder recievedData = new StringBuilder();
-				while ((line = reader.readLine()) != null)
+				// Read data from server
+				InputStream in = null;
+				try
 				{
-					recievedData.append(line).append("\n");
+					in = connection.getInputStream();
+					BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+					String line = null;
+					StringBuilder recievedData = new StringBuilder();
+					while ((line = reader.readLine()) != null)
+					{
+						recievedData.append(line).append("\n");
+					}
+					reader.close();
+					response.responseContent = recievedData.toString();
 				}
-				reader.close();
-				response.responseContent = recievedData.toString();
-			}
-			finally
-			{
-				if (in != null)
+				finally
 				{
-					in.close();
+					if (in != null)
+					{
+						in.close();
+					}
 				}
 			}
 			return response;
