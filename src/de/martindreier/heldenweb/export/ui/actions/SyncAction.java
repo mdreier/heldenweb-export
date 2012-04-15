@@ -33,13 +33,21 @@ public class SyncAction extends AbstractAction
 	@Override
 	public void actionPerformed(ActionEvent e)
 	{
-		try
+		new Thread(new Runnable()
 		{
-			synchronizer.sync();
-		}
-		catch (HeldenWebExportException exception)
-		{
-			HeldenWebFehler.handleError(parent, "Fehler beim Export des Helden", exception);
-		}
+
+			@Override
+			public void run()
+			{
+				try
+				{
+					synchronizer.sync();
+				}
+				catch (HeldenWebExportException exception)
+				{
+					HeldenWebFehler.handleError(parent, "Fehler beim Export des Helden", exception);
+				}
+			}
+		}).start();
 	}
 }

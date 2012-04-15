@@ -37,6 +37,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import de.martindreier.heldenweb.export.HeldenWebExportException;
 import de.martindreier.heldenweb.export.sync.HttpClient.Response;
+import de.martindreier.heldenweb.export.ui.ProgressMonitor;
 
 /**
  * The cache to store the IDs of objects.
@@ -133,10 +134,11 @@ public class Cache
 	 *          The talents to synchronize.
 	 * @param tool
 	 *          The tool.
+	 * @param monitor
 	 * @throws HeldenWebExportException
 	 */
-	public void synchronizeTalents(Map<String, PluginTalent> talents, PluginHeldenWerteWerkzeug3 tool)
-					throws HeldenWebExportException
+	public void synchronizeTalents(Map<String, PluginTalent> talents, PluginHeldenWerteWerkzeug3 tool,
+					ProgressMonitor monitor) throws HeldenWebExportException
 	{
 		try
 		{
@@ -147,13 +149,16 @@ public class Cache
 			throw new HeldenWebExportException("Fehler beim synchronisieren der Talente", exception);
 		}
 
+		monitor.startSubtask(null, talents.size());
 		for (String talentName : talents.keySet())
 		{
 			if (getKey(CacheKey.TALENT, talentName) == null)
 			{
 				sendTalentToServer(talentName, talents.get(talentName), tool);
 			}
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
 	/**
@@ -297,7 +302,11 @@ public class Cache
 			{
 				Element element = document.createElement(elementName);
 				Object elementContent = elements.get(elementName);
-				if (elementContent instanceof Map)
+				if (elementContent == null)
+				{
+					element.setTextContent("");
+				}
+				else if (elementContent instanceof Map)
 				{
 					Map<?, ?> elementContents = (Map<?, ?>) elementContent;
 					for (Object childName : elementContents.keySet())
@@ -552,7 +561,8 @@ public class Cache
 		keys.clear();
 	}
 
-	public void synchronizeAttributes(PluginHeldenWerteWerkzeug3 werkzeug) throws HeldenWebExportException
+	public void synchronizeAttributes(PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
 	{
 		try
 		{
@@ -563,13 +573,16 @@ public class Cache
 			throw new HeldenWebExportException("Eigenschaften konnten nicht vom Server gelesen werden", exception);
 		}
 
+		monitor.startSubtask(null, werkzeug.getEigenschaftsbezeichner().length);
 		for (String attributeName : werkzeug.getEigenschaftsbezeichner())
 		{
 			if (getKey(CacheKey.EIGENSCHAFT, attributeName) == null)
 			{
 				sendAttributeToServer(attributeName);
 			}
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
 	private void sendAttributeToServer(String attributeName) throws HeldenWebExportException
@@ -582,7 +595,7 @@ public class Cache
 		keys.put(CacheKey.EIGENSCHAFT + attributeName, id);
 	}
 
-	public void synchronizeTalentTypes(Set<String> talentarten) throws HeldenWebExportException
+	public void synchronizeTalentTypes(Set<String> talentarten, ProgressMonitor monitor) throws HeldenWebExportException
 	{
 		try
 		{
@@ -593,14 +606,16 @@ public class Cache
 			throw new HeldenWebExportException("Talentarten konnten nicht vom Server gelesen werden", exception);
 		}
 
+		monitor.startSubtask(null, talentarten.size());
 		for (String talentTypeName : talentarten)
 		{
 			if (getKey(CacheKey.TALENTART, talentTypeName) == null)
 			{
 				sendTalentTypeToServer(talentTypeName);
 			}
+			monitor.step();
 		}
-
+		monitor.subtaskDone();
 	}
 
 	private void sendTalentTypeToServer(String talentTypeName) throws HeldenWebExportException
@@ -612,7 +627,8 @@ public class Cache
 		keys.put(CacheKey.TALENTART + talentTypeName, id);
 	}
 
-	public void synchronizeAdvantages(PluginHeldenWerteWerkzeug3 werkzeug) throws HeldenWebExportException
+	public void synchronizeAdvantages(PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
 	{
 		try
 		{
@@ -624,13 +640,16 @@ public class Cache
 		}
 
 		String[] vorteile = werkzeug.getVorteileAlsString();
+		monitor.startSubtask(null, vorteile.length);
 		for (String vorteilName : vorteile)
 		{
 			if (getKey(CacheKey.VORTEIL, vorteilName) == null)
 			{
 				sendAdvantageToServer(vorteilName, werkzeug);
 			}
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
 	private String booleanToDb(boolean value)
@@ -673,7 +692,8 @@ public class Cache
 		return attributeName.substring(0, 2).toUpperCase();
 	}
 
-	public void synchronizeSpecialAbilities(PluginHeldenWerteWerkzeug3 werkzeug) throws HeldenWebExportException
+	public void synchronizeSpecialAbilities(PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
 	{
 		try
 		{
@@ -685,13 +705,16 @@ public class Cache
 		}
 
 		String[] sonderfertigkeiten = werkzeug.getSonderfertigkeitenAlsString();
+		monitor.startSubtask(null, sonderfertigkeiten.length);
 		for (String sonderfertigkeitName : sonderfertigkeiten)
 		{
 			if (getKey(CacheKey.SONDERFERTIGKEIT, sonderfertigkeitName) == null)
 			{
 				sendSpecialAbilityToServer(sonderfertigkeitName, werkzeug);
 			}
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
 	private void sendSpecialAbilityToServer(String sonderfertigkeitName, PluginHeldenWerteWerkzeug3 werkzeug)
@@ -740,7 +763,8 @@ public class Cache
 		objectMap.put(key, booleanToDb(value));
 	}
 
-	public void synchronizeSpells(PluginHeldenWerteWerkzeug3 werkzeug) throws HeldenWebExportException
+	public void synchronizeSpells(PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
 	{
 		try
 		{
@@ -752,6 +776,7 @@ public class Cache
 		}
 
 		String[][] spells = werkzeug.getZauberAlsString();
+		monitor.startSubtask(null, spells.length);
 		for (String[] spell : spells)
 		{
 			String spellName = spell[0];
@@ -761,7 +786,9 @@ public class Cache
 			{
 				sendSpellToServer(spellName, representation, werkzeug);
 			}
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
 	private void sendSpellToServer(String spellName, String representation, PluginHeldenWerteWerkzeug3 werkzeug)
@@ -916,13 +943,14 @@ public class Cache
 		}
 	}
 
-	public void synchronizeHeroSpecialAbilities(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	public void synchronizeHeroSpecialAbilities(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
 					throws HeldenWebExportException
 	{
 		getIdsFromServer(CacheKey.HELD_SONDERFERTIGKEIT, "heldenSonderfertigkeit", "HeldenSonderfertigkeiten.xml",
 						"Helden-Sonderfertigkeiten", false, "held_id", "sonderfertigkeit_id");
 
 		String[] sonderfertigkeiten = werkzeug.getSonderfertigkeitenAlsString();
+		monitor.startSubtask("Sonderfertigkeiten", sonderfertigkeiten.length);
 		for (String specialAbility : sonderfertigkeiten)
 		{
 			UUID specialAbilityId = getKey(CacheKey.SONDERFERTIGKEIT, specialAbility);
@@ -933,7 +961,9 @@ public class Cache
 			data.put("spezialisierung", specialization);
 			sendMappingToServer(CacheKey.HELD_SONDERFERTIGKEIT, heroId, specialAbilityId, data, "HeldenSonderfertigkeit",
 							"HeldenSonderfertigkeiten");
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
 	/**
@@ -969,12 +999,14 @@ public class Cache
 		}
 	}
 
-	public void synchronizeHeroTalents(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug) throws HeldenWebExportException
+	public void synchronizeHeroTalents(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
 	{
 		getIdsFromServer(CacheKey.HELD_TALENT, "heldentalent", "HeldenTalenten.xml", "Helden-Talente", false, "held_id",
 						"talent_id");
 
 		String[] talente = werkzeug.getTalenteAlsString();
+		monitor.startSubtask("Talente", talente.length);
 		for (String talentName : talente)
 		{
 			UUID talentId = getKey(CacheKey.TALENT, talentName);
@@ -991,7 +1023,9 @@ public class Cache
 			data.put("parade", Integer.toString(werkzeug.getParade(talent)));
 			data.put("behinderung", talent.getBehinderung());
 			sendMappingToServer(CacheKey.HELD_TALENT, heroId, talentId, data, "HeldenTalent", "HeldenTalenten");
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
 	/**
@@ -1033,13 +1067,14 @@ public class Cache
 		}
 	}
 
-	public void synchronizeHeroAdvantages(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	public void synchronizeHeroAdvantages(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
 					throws HeldenWebExportException
 	{
 		getIdsFromServer(CacheKey.HELD_VORTEIL, "heldenvorteil", "HeldenVorteilen.xml", "Helden-Vorteile", false,
 						"held_id", "vorteil_id");
 
 		String[] vorteile = werkzeug.getVorteileAlsString();
+		monitor.startSubtask("Vorteile", vorteile.length);
 		for (String vorteilName : vorteile)
 		{
 			UUID vorteilId = getKey(CacheKey.VORTEIL, vorteilName);
@@ -1054,15 +1089,19 @@ public class Cache
 			data.put("vorteil_id", vorteilId.toString());
 			data.put("wert", Integer.toString(vorteil.getWert()));
 			sendMappingToServer(CacheKey.HELD_VORTEIL, heroId, vorteilId, data, "HeldenVorteil", "HeldenVorteilen");
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
-	public void synchronizeHeroSpells(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug) throws HeldenWebExportException
+	public void synchronizeHeroSpells(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
 	{
 		getIdsFromServer(CacheKey.HELD_ZAUBER, "heldenzauber", "HeldenZauber.xml", "Helden-Zauber", false, "held_id",
 						"zauber_id");
 
 		String[][] spells = werkzeug.getZauberAlsString();
+		monitor.startSubtask("Zauber", spells.length);
 		for (String[] spellData : spells)
 		{
 			UUID spellId = getKey(CacheKey.VORTEIL, spellData[0], spellData[1]);
@@ -1077,16 +1116,19 @@ public class Cache
 			data.put("zauber_id", spellId.toString());
 			data.put("zauberfertigkeitswert", Integer.toString(werkzeug.getZauberInfo(spell).getZauberfertigkeitsWert()));
 			sendMappingToServer(CacheKey.HELD_ZAUBER, heroId, spellId, data, "HeldenZauber", "HeldenZauber");
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 
-	public void synchronizeHeroAttributes(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug)
+	public void synchronizeHeroAttributes(UUID heroId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
 					throws HeldenWebExportException
 	{
 		getIdsFromServer(CacheKey.HELD_EIGENSCHAFT, "eigenschaftenheld", "EigenschaftenHelden.xml", "Helden-Eigenschaften",
 						false, "held_id", "eigenschaft_id");
 
 		String[] attributes = werkzeug.getEigenschaftsbezeichner();
+		monitor.startSubtask("Eigenschaften", werkzeug.getEigenschaftsbezeichner().length);
 		for (String attributeName : attributes)
 		{
 			UUID attributeId = getKey(CacheKey.EIGENSCHAFT, attributeName);
@@ -1101,6 +1143,8 @@ public class Cache
 			data.put("wert", Integer.toString(werkzeug.getEigenschaftswert(attributeName)));
 			sendMappingToServer(CacheKey.HELD_EIGENSCHAFT, heroId, attributeId, data, "EigenschaftenHeld",
 							"EigenschaftenHelden");
+			monitor.step();
 		}
+		monitor.subtaskDone();
 	}
 }

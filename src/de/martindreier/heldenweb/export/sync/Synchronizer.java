@@ -11,19 +11,23 @@ import java.util.UUID;
 import de.martindreier.heldenweb.export.HeldenWebExportException;
 import de.martindreier.heldenweb.export.Settings;
 import de.martindreier.heldenweb.export.sync.Cache.CacheKey;
+import de.martindreier.heldenweb.export.ui.ProgressMonitor;
 
 public class Synchronizer
 {
 
+	private static final int						SYNC_STEPS						= 13;
 	@SuppressWarnings("unused")
 	private PluginHeld2[]								helden;
 	private PluginHeldenWerteWerkzeug3	werkzeug;
 	private HttpClient									client;
 	private Cache												cache;
 	private boolean											skipSpecialAbilities	= false;
+	private ProgressMonitor							monitor;
 
 	public Synchronizer(PluginHeld2[] helden, PluginHeldenWerteWerkzeug3 werkzeug)
 	{
+		this.monitor = new NullProgressMonitor();
 		this.helden = helden;
 		this.werkzeug = werkzeug;
 		Settings settings = Settings.getSettings();
@@ -33,9 +37,17 @@ public class Synchronizer
 
 	public void sync() throws HeldenWebExportException
 	{
-		werkzeug.setAktivenHeld(werkzeug.getSelectesHeld());
-		syncBaseData();
-		syncHeld();
+		monitor.start(SYNC_STEPS);
+		try
+		{
+			werkzeug.setAktivenHeld(werkzeug.getSelectesHeld());
+			syncBaseData();
+			syncHeld();
+		}
+		finally
+		{
+			monitor.done();
+		}
 	}
 
 	/**
@@ -55,7 +67,9 @@ public class Synchronizer
 	private void syncBaseData() throws HeldenWebExportException
 	{
 		// Eigenschaften
-		cache.synchronizeAttributes(werkzeug);
+		monitor.startTask("Übertrage Attribute");
+		cache.synchronizeAttributes(werkzeug, monitor);
+		monitor.step();
 
 		// Talentarten und Talente
 		String[] talentNamen = werkzeug.getTalenteAlsString();
@@ -67,18 +81,26 @@ public class Synchronizer
 			talente.put(talentName, talent);
 			talentarten.add(talent.getTalentart());
 		}
-		cache.synchronizeTalentTypes(talentarten);
-		cache.synchronizeTalents(talente, werkzeug);
+		monitor.startTask("Übertrage Talentarten");
+		cache.synchronizeTalentTypes(talentarten, monitor);
+		monitor.step();
+
+		monitor.startTask("Übertrage Talente");
+		cache.synchronizeTalents(talente, werkzeug, monitor);
+		monitor.step();
 
 		// Vorteile
-		cache.synchronizeAdvantages(werkzeug);
+		monitor.startTask("Übertrage Vorteile");
+		cache.synchronizeAdvantages(werkzeug, monitor);
+		monitor.step();
 
 		// Sonderfertigkeiten
+		monitor.startTask("Übertrage Sonderfertigkeiten");
 		if (!skipSpecialAbilities)
 		{
 			try
 			{
-				cache.synchronizeSpecialAbilities(werkzeug);
+				cache.synchronizeSpecialAbilities(werkzeug, monitor);
 			}
 			catch (StackOverflowError e)
 			{
@@ -86,23 +108,28 @@ public class Synchronizer
 				skipSpecialAbilities = true;
 			}
 		}
+		monitor.step();
 
 		// Zauber
-		cache.synchronizeSpells(werkzeug);
+		monitor.startTask("Übertrage Zauber");
+		cache.synchronizeSpells(werkzeug, monitor);
+		monitor.step();
 	}
 
 	private void syncHeld() throws HeldenWebExportException
 	{
+		monitor.startTask("Übertrage Held");
 		cache.synchronizeHeroData(werkzeug);
+		monitor.step();
 		UUID heldId = cache.getKey(CacheKey.HELD, werkzeug.getHeldenID());
-		cache.synchronizeHeroAttributes(heldId, werkzeug);
+		cache.synchronizeHeroAttributes(heldId, werkzeug, monitor);
 		if (!skipSpecialAbilities)
 		{
-			cache.synchronizeHeroSpecialAbilities(heldId, werkzeug);
+			cache.synchronizeHeroSpecialAbilities(heldId, werkzeug, monitor);
 		}
-		cache.synchronizeHeroTalents(heldId, werkzeug);
-		cache.synchronizeHeroAdvantages(heldId, werkzeug);
-		cache.synchronizeHeroSpells(heldId, werkzeug);
+		cache.synchronizeHeroTalents(heldId, werkzeug, monitor);
+		cache.synchronizeHeroAdvantages(heldId, werkzeug, monitor);
+		cache.synchronizeHeroSpells(heldId, werkzeug, monitor);
 	}
 
 	public String getHeroName()
@@ -110,4 +137,37 @@ public class Synchronizer
 		return werkzeug.getSelectesHeld().toString();
 	}
 
+	public void setProgressMonitor(ProgressMonitor monitor)
+	{
+		this.monitor = monitor;
+	}
+
+	private static class NullProgressMonitor implements ProgressMonitor
+	{
+
+		@Override
+		public void subtaskDone()
+		{}
+
+		@Override
+		public void done()
+		{}
+
+		@Override
+		public void start(int steps)
+		{}
+
+		@Override
+		public void startTask(String name)
+		{}
+
+		@Override
+		public void startSubtask(String name, int steps)
+		{}
+
+		@Override
+		public void step()
+		{}
+
+	}
 }
