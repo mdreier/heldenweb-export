@@ -1,11 +1,16 @@
 package de.martindreier.heldenweb.export.sync;
 
 import helden.plugin.werteplugin.HeldAngaben;
+import helden.plugin.werteplugin.PluginFernkampfWaffe;
 import helden.plugin.werteplugin.PluginHeld;
+import helden.plugin.werteplugin.PluginRuestungsTeil;
 import helden.plugin.werteplugin.PluginSonderfertigkeit;
 import helden.plugin.werteplugin.PluginTalent;
 import helden.plugin.werteplugin.PluginVorteil;
 import helden.plugin.werteplugin.PluginZauberInfo;
+import helden.plugin.werteplugin2.PluginFernkampfWaffe2;
+import helden.plugin.werteplugin2.PluginNahkampfWaffe2;
+import helden.plugin.werteplugin2.PluginSchildParadewaffe;
 import helden.plugin.werteplugin3.PluginHeldenWerteWerkzeug3;
 import helden.plugin.werteplugin3.PluginZauber3;
 import java.io.ByteArrayInputStream;
@@ -59,7 +64,8 @@ public class Cache
 	 */
 	public static enum CacheKey
 	{
-		TALENT, EIGENSCHAFT, TALENTART, VORTEIL, SONDERFERTIGKEIT, ZAUBER, HELD, HELD_TALENT, HELD_VORTEIL, HELD_SONDERFERTIGKEIT, HELD_ZAUBER, HELD_EIGENSCHAFT
+		TALENT, EIGENSCHAFT, TALENTART, VORTEIL, SONDERFERTIGKEIT, ZAUBER, HELD, HELD_TALENT, HELD_VORTEIL,
+		HELD_SONDERFERTIGKEIT, HELD_ZAUBER, HELD_EIGENSCHAFT, NAHKAMPFWAFFE, FERNKAMPFWAFFE, RUESTUNG, SCHILD
 	};
 
 	/**
@@ -880,6 +886,7 @@ public class Cache
 		objectData.put("profession", hero.getProfessionString());
 		objectData.put("rasse", hero.getRasseString());
 		objectData.put("stufe", Integer.toString(hero.getStufe()));
+		objectData.put("ausweichen", Integer.toString(werkzeug.getAusruestung2().getAusweichen()));
 		objectData.put("zaubersprueche", booleanToDb(hero.hatZaubersprueche()));
 
 		// Description
@@ -1057,6 +1064,45 @@ public class Cache
 	 *          The URL, without trailing &quot;.xml&quot;.
 	 * @throws HeldenWebExportException
 	 */
+	private void sendEquipmentToServer(CacheKey cacheKey, UUID heroId, String equipmentName, Map<String, String> data,
+					String rootElementName, String url) throws HeldenWebExportException
+	{
+		// Cut off extension
+		if (url.endsWith(".xml"))
+		{
+			url = url.substring(0, url.length() - 4);
+		}
+		UUID key = getKey(cacheKey, equipmentName, heroId.toString());
+		if (key == null)
+		{
+			key = sendToServer(rootElementName, data, url + ".xml", "/" + rootElementName.toLowerCase() + "/id");
+			keys.put(cacheKey + equipmentName + heroId.toString(), key);
+		}
+		else
+		{
+			data.put("id", key.toString());
+			sendToServer(rootElementName, data, url + "/edit/" + key.toString() + ".xml", "/" + rootElementName.toLowerCase()
+							+ "/id");
+		}
+	}
+
+	/**
+	 * Send hero->object mapping to the server.
+	 * 
+	 * @param cacheKey
+	 *          Cache key identifier.
+	 * @param heroId
+	 *          The hero ID.
+	 * @param objectId
+	 *          The object's ID.
+	 * @param data
+	 *          The data to be sent to the server.
+	 * @param rootElementName
+	 *          The root element name in the generated XML.
+	 * @param url
+	 *          The URL, without trailing &quot;.xml&quot;.
+	 * @throws HeldenWebExportException
+	 */
 	private void sendMappingToServer(CacheKey cacheKey, UUID heroId, UUID objectId, Map<String, String> data,
 					String rootElementName, String url) throws HeldenWebExportException
 	{
@@ -1140,7 +1186,7 @@ public class Cache
 						false, "held_id", "eigenschaft_id");
 
 		String[] attributes = werkzeug.getEigenschaftsbezeichner();
-		monitor.startSubtask("Eigenschaften", werkzeug.getEigenschaftsbezeichner().length);
+		monitor.startSubtask("Eigenschaften", werkzeug.getEigenschaftsbezeichner().length + 1);
 		for (String attributeName : attributes)
 		{
 			UUID attributeId = getKey(CacheKey.EIGENSCHAFT, attributeName);
@@ -1172,6 +1218,224 @@ public class Cache
 		sendMappingToServer(CacheKey.HELD_EIGENSCHAFT, heroId, attributeId, data, "EigenschaftenHeld",
 						"EigenschaftenHelden");
 		monitor.step();
+		monitor.subtaskDone();
+	}
+
+	public void syncMeleeWeapons(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
+	{
+		getIdsFromServer(CacheKey.NAHKAMPFWAFFE, "nahkampfwaffe", "Nahkampfwaffen.xml", "Nahkampfwaffen", true, "held_id");
+
+		PluginNahkampfWaffe2[] waffen = werkzeug.getAusruestung2().getNahkampfWaffen();
+		monitor.startSubtask("Nahkampfwaffen", waffen.length);
+		for (PluginNahkampfWaffe2 waffe : waffen)
+		{
+			if (waffe == null)
+			{
+				// Not all weapons may be set
+				continue;
+			}
+			UUID talentId = getKey(CacheKey.TALENT, waffe.getBenutztesTalent().getBezeichnung());
+			if (talentId == null)
+			{
+				throw new HeldenWebExportException(MessageFormat.format(
+								"Nahkampfwaffe {0} referenziert unbekanntes Talent {1}", waffe.getName(), waffe.getBenutztesTalent()
+												.getBezeichnung()));
+			}
+
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heldId.toString());
+			data.put("talent_id", talentId.toString());
+			data.put("name", waffe.getName());
+			data.put("attacke", Integer.toString(waffe.getAttacke()));
+			data.put("parade", Integer.toString(waffe.getParade()));
+			data.put("trefferpunkte", tpToString(waffe.getTrefferpunkte()));
+			data.put("trefferpunkte_final", tpToString(waffe.getEndTP()));
+			data.put("koerperkraftzuschlag",
+							String.format("%d/%d", waffe.getKoerperkraftzuschlag()[0], waffe.getKoerperkraftzuschlag()[1]));
+			data.put("bruchfaktor_minimal", Integer.toString(waffe.getBF()[0]));
+			data.put("bruchfaktor_aktuell", Integer.toString(waffe.getBF()[1]));
+			data.put("inimodifikator", Integer.toString(waffe.getINIMod()));
+			data.put("distanzklasse", arrayToString(waffe.getDistanzklasse()));
+			data.put("ausdauerschaden", booleanToDb(waffe.isSchadensartAusdauer()));
+			data.put("waffenmodifikator_attacke", Integer.toString(waffe.getWmAT()));
+			data.put("waffenmodifikator_parade", Integer.toString(waffe.getWmPA()));
+
+			sendEquipmentToServer(CacheKey.NAHKAMPFWAFFE, heldId, waffe.getName(), data, "Nahkampfwaffe", "Nahkampfwaffen");
+			monitor.step();
+		}
+		monitor.subtaskDone();
+	}
+
+	private String arrayToString(String[] array)
+	{
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < array.length; i++)
+		{
+			if (i > 0)
+			{
+				sb.append(", ");
+			}
+			sb.append(array[i]);
+		}
+		return sb.toString();
+	}
+
+	/**
+	 * Convert hitpoint array to string.
+	 * 
+	 * @param tp
+	 *          Trefferpunkte, 0: Anzahl Würfel; 1: Würfelart; 2: Festwert
+	 * @return
+	 */
+	private String tpToString(int[] tp)
+	{
+		if (tp == null || tp.length != 3)
+		{
+			return "";
+		}
+		return String.format("%dw%d%+d", tp[0], tp[1], tp[2]);
+	}
+
+	public void syncRangedWeapons(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
+	{
+		getIdsFromServer(CacheKey.FERNKAMPFWAFFE, "fernkampfwaffe", "Fernkampfwaffen.xml", "Fernkampfwaffen", true,
+						"held_id");
+
+		PluginFernkampfWaffe[] waffen = werkzeug.getAusruestung2().getFernkampfWaffen();
+		monitor.startSubtask("Fernkampfwaffen", waffen.length);
+		for (PluginFernkampfWaffe waffe : waffen)
+		{
+			if (waffe == null)
+			{
+				// Not all weapons may be set
+				continue;
+			}
+			UUID talentId = getKey(CacheKey.TALENT, waffe.getTalent().getBezeichnung());
+			if (talentId == null)
+			{
+				throw new HeldenWebExportException(MessageFormat.format(
+								"Nahkampfwaffe {0} referenziert unbekanntes Talent {1}", waffe.toString(), waffe.getTalent()
+												.getBezeichnung()));
+			}
+
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heldId.toString());
+			data.put("talent_id", talentId.toString());
+			data.put("name", waffe.toString());
+			try
+			{
+				// Try to use newer interface
+				data.put("fernkampfwert", Integer.toString(((PluginFernkampfWaffe2) waffe).getFernkammpfWert()));
+			}
+			catch (ClassCastException e)
+			{
+				// New interface not available
+				data.put("fernkampfwert", Integer.toString(werkzeug.getTalentwert(waffe.getTalent())));
+			}
+			data.put("trefferpunkte", tpToString(waffe.getTrefferpunkte()));
+			data.put("ladezeit", Integer.toString(waffe.getLaden()));
+			data.put("munitionsart", waffe.getMunitionsArt());
+			int[] reichweite = waffe.getReichweite();
+			int[] trefferpunkte = waffe.getTrefferpunkteModifikation();
+			data.put("reichweite0", Integer.toString(reichweite[0]));
+			data.put("trefferpunkte0", Integer.toString(trefferpunkte[0]));
+			data.put("reichweite1", Integer.toString(reichweite[1]));
+			data.put("trefferpunkte1", Integer.toString(trefferpunkte[1]));
+			data.put("reichweite2", Integer.toString(reichweite[2]));
+			data.put("trefferpunkte2", Integer.toString(trefferpunkte[2]));
+			data.put("reichweite3", Integer.toString(reichweite[3]));
+			data.put("trefferpunkte3", Integer.toString(trefferpunkte[3]));
+			data.put("reichweite4", Integer.toString(reichweite[4]));
+			data.put("trefferpunkte4", Integer.toString(trefferpunkte[4]));
+
+			sendEquipmentToServer(CacheKey.FERNKAMPFWAFFE, heldId, waffe.toString(), data, "Fernkampfwaffe",
+							"Fernkampfwaffen");
+			monitor.step();
+		}
+		monitor.subtaskDone();
+	}
+
+	public void syncArmor(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
+	{
+		getIdsFromServer(CacheKey.RUESTUNG, "ruestung", "Ruestungen.xml", "Rüstungen", true, "held_id");
+
+		PluginRuestungsTeil[] ruestungen = werkzeug.getAusruestung2().getRuestungsTeile();
+		monitor.startSubtask("Rüstungen", ruestungen.length + 1);
+		for (PluginRuestungsTeil ruestung : ruestungen)
+		{
+			if (ruestung == null)
+			{
+				// Not all armor parts may be set
+				continue;
+			}
+
+			sendArmorToServer(heldId, werkzeug, ruestung, false);
+			monitor.step();
+		}
+		PluginRuestungsTeil gesamtRuestung = werkzeug.getAusruestung2().getGesammtRuestung();
+		if (gesamtRuestung != null)
+		{
+			sendArmorToServer(heldId, werkzeug, gesamtRuestung, true);
+			monitor.step();
+		}
+		monitor.subtaskDone();
+	}
+
+	private void sendArmorToServer(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug, PluginRuestungsTeil ruestung,
+					boolean complete) throws HeldenWebExportException
+	{
+		Map<String, String> data = new HashMap<String, String>();
+		data.put("held_id", heldId.toString());
+		data.put("name", ruestung.toString());
+		data.put("gesamt", booleanToDb(complete));
+		data.put("zeug", booleanToDb(ruestung.istZeug()));
+		data.put("anzahl_teile", Integer.toString(ruestung.getAnzahlTeile()));
+		data.put("behinderung_gesamt", Integer.toString(ruestung.getGesammtBehinderung()));
+		data.put("schutz_gesamt", Integer.toString(ruestung.getGesamtSchutz()));
+		data.put("schutz_gesamt_zonen", Integer.toString(ruestung.getGesammtZonenSchutz()));
+		data.put("schutz_bauch", Integer.toString(ruestung.getBauchSchutz()));
+		data.put("schutz_brust", Integer.toString(ruestung.getBrustSchutz()));
+		data.put("schutz_kopf", Integer.toString(ruestung.getKopfSchutz()));
+		data.put("schutz_ruecken", Integer.toString(ruestung.getRueckenSchutz()));
+		data.put("schutz_arm_links", Integer.toString(ruestung.getLinkerArmSchutz()));
+		data.put("schutz_arm_rechts", Integer.toString(ruestung.getRechterArmSchutz()));
+		data.put("schutz_bein_links", Integer.toString(ruestung.getLinkesBeinSchutz()));
+		data.put("schutz_bein_rechts", Integer.toString(ruestung.getRechtesBeinSchutz()));
+		sendEquipmentToServer(CacheKey.RUESTUNG, heldId, ruestung.toString(), data, "Ruestung", "Ruestungen");
+	}
+
+	public void syncShields(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
+	{
+		getIdsFromServer(CacheKey.SCHILD, "schild", "Schilde.xml", "Schilde", true, "held_id");
+
+		PluginSchildParadewaffe[] schilde = werkzeug.getAusruestung2().getSchildParadewaffe();
+		monitor.startSubtask("Schilde und Paradewaffen", schilde.length);
+		for (PluginSchildParadewaffe schild : schilde)
+		{
+			if (schild == null)
+			{
+				// Not all shields might be set
+				continue;
+			}
+
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heldId.toString());
+			data.put("name", schild.getName());
+			data.put("parade", Integer.toString(schild.getParade()));
+			data.put("art", schild.getBenutzungsart());
+			data.put("inimodifikator", Integer.toString(schild.getInitiativeModifikator()));
+			data.put("waffenmodifikator_attacke", Integer.toString(schild.getWaffenModifikatorAT()));
+			data.put("waffenmodifikator_parade", Integer.toString(schild.getWaffenModifikatorPA()));
+			data.put("bruchfaktor_minimal", Integer.toString(schild.getBruchfaktorMin()));
+			data.put("bruchfaktor_aktuell", Integer.toString(schild.getBruchfaktor()));
+
+			sendEquipmentToServer(CacheKey.SCHILD, heldId, schild.getName(), data, "Schild", "Schilde");
+			monitor.step();
+		}
 		monitor.subtaskDone();
 	}
 }

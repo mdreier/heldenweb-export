@@ -16,7 +16,7 @@ import de.martindreier.heldenweb.export.ui.ProgressMonitor;
 public class Synchronizer
 {
 
-	private static final int						SYNC_STEPS						= 13;
+	private static final int						SYNC_STEPS						= 17;
 	@SuppressWarnings("unused")
 	private PluginHeld2[]								helden;
 	private PluginHeldenWerteWerkzeug3	werkzeug;
@@ -43,11 +43,31 @@ public class Synchronizer
 			werkzeug.setAktivenHeld(werkzeug.getSelectesHeld());
 			syncBaseData();
 			syncHeld();
+			syncEquipment();
 		}
 		finally
 		{
 			monitor.done();
 		}
+	}
+
+	/**
+	 * Synchronize equipment (combat gear).
+	 * 
+	 * @throws HeldenWebExportException
+	 */
+	private void syncEquipment() throws HeldenWebExportException
+	{
+		UUID heldId = cache.getKey(CacheKey.HELD, werkzeug.getHeldenID());
+		monitor.startTask("Übertrage Ausrüstung");
+		cache.syncMeleeWeapons(heldId, werkzeug, monitor);
+		monitor.step();
+		cache.syncRangedWeapons(heldId, werkzeug, monitor);
+		monitor.step();
+		cache.syncArmor(heldId, werkzeug, monitor);
+		monitor.step();
+		cache.syncShields(heldId, werkzeug, monitor);
+		monitor.step();
 	}
 
 	/**
@@ -130,6 +150,7 @@ public class Synchronizer
 		cache.synchronizeHeroTalents(heldId, werkzeug, monitor);
 		cache.synchronizeHeroAdvantages(heldId, werkzeug, monitor);
 		cache.synchronizeHeroSpells(heldId, werkzeug, monitor);
+		monitor.step();
 	}
 
 	public String getHeroName()
