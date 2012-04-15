@@ -68,6 +68,7 @@ public class Synchronizer
 		monitor.step();
 		cache.syncShields(heldId, werkzeug, monitor);
 		monitor.step();
+		cache.syncCombat(heldId, werkzeug, monitor);
 	}
 
 	/**

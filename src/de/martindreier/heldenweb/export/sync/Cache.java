@@ -65,7 +65,7 @@ public class Cache
 	public static enum CacheKey
 	{
 		TALENT, EIGENSCHAFT, TALENTART, VORTEIL, SONDERFERTIGKEIT, ZAUBER, HELD, HELD_TALENT, HELD_VORTEIL,
-		HELD_SONDERFERTIGKEIT, HELD_ZAUBER, HELD_EIGENSCHAFT, NAHKAMPFWAFFE, FERNKAMPFWAFFE, RUESTUNG, SCHILD
+		HELD_SONDERFERTIGKEIT, HELD_ZAUBER, HELD_EIGENSCHAFT, NAHKAMPFWAFFE, FERNKAMPFWAFFE, RUESTUNG, SCHILD, KAMPF
 	};
 
 	/**
@@ -886,7 +886,6 @@ public class Cache
 		objectData.put("profession", hero.getProfessionString());
 		objectData.put("rasse", hero.getRasseString());
 		objectData.put("stufe", Integer.toString(hero.getStufe()));
-		objectData.put("ausweichen", Integer.toString(werkzeug.getAusruestung2().getAusweichen()));
 		objectData.put("zaubersprueche", booleanToDb(hero.hatZaubersprueche()));
 
 		// Description
@@ -1437,5 +1436,32 @@ public class Cache
 			monitor.step();
 		}
 		monitor.subtaskDone();
+	}
+
+	public void syncCombat(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
+	{
+		getIdsFromServer(CacheKey.KAMPF, "kampf", "Kampf.xml", "Kampfwerte", false, "held_id");
+
+		Map<String, String> data = new HashMap<String, String>();
+		data.put("held_id", heldId.toString());
+		data.put("ausweichen", Integer.toString(werkzeug.getAusruestung2().getAusweichen()));
+		data.put("raufen_attacke", Integer.toString(werkzeug.getAusruestung2().getRauferAttacke()));
+		data.put("raufen_parade", Integer.toString(werkzeug.getAusruestung2().getRaufenParade()));
+		data.put("raufen_trefferpunkte", werkzeug.getAusruestung2().getRaufenTP());
+		data.put("ringen_attacke", Integer.toString(werkzeug.getAusruestung2().getRingenAttacke()));
+		data.put("ringen_parade", Integer.toString(werkzeug.getAusruestung2().getRingenParade()));
+		data.put("ringen_trefferpunkte", werkzeug.getAusruestung2().getRingenTP());
+
+		UUID key = getKey(CacheKey.KAMPF, heldId.toString());
+		if (key == null)
+		{
+			key = sendToServer("Kampf", data, "Kampf.xml", "/kampf/id");
+			keys.put(CacheKey.KAMPF + heldId.toString(), key);
+		}
+		else
+		{
+			sendToServer("Kampf", data, "Kampf/edit/" + key.toString() + ".xml", "/kampf/id");
+		}
 	}
 }
