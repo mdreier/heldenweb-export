@@ -67,6 +67,8 @@ public class Cache
 	 */
 	private static final Map<String, String>	attributeNameShort;
 
+	private static final String								ATTRIBUTE_SPEED	= "Geschwindigkeit";
+
 	static
 	{
 		// Initialize attribute names
@@ -106,12 +108,12 @@ public class Cache
 	/**
 	 * Document builder factory.
 	 */
-	private DocumentBuilderFactory						factory				= DocumentBuilderFactory.newInstance();	;
+	private DocumentBuilderFactory						factory					= DocumentBuilderFactory.newInstance();	;
 
 	/**
 	 * XPath factory.
 	 */
-	private XPathFactory											xpathFactory	= XPathFactory.newInstance();
+	private XPathFactory											xpathFactory		= XPathFactory.newInstance();
 
 	/**
 	 * Create a new cache instance.
@@ -573,7 +575,7 @@ public class Cache
 			throw new HeldenWebExportException("Eigenschaften konnten nicht vom Server gelesen werden", exception);
 		}
 
-		monitor.startSubtask(null, werkzeug.getEigenschaftsbezeichner().length);
+		monitor.startSubtask(null, werkzeug.getEigenschaftsbezeichner().length + 1);
 		for (String attributeName : werkzeug.getEigenschaftsbezeichner())
 		{
 			if (getKey(CacheKey.EIGENSCHAFT, attributeName) == null)
@@ -581,6 +583,16 @@ public class Cache
 				sendAttributeToServer(attributeName);
 			}
 			monitor.step();
+		}
+		// Special treatment for speed
+		if (getKey(CacheKey.EIGENSCHAFT, ATTRIBUTE_SPEED) == null)
+		{
+			Map<String, String> attributeData = new HashMap<String, String>();
+			attributeData.put("kurzbezeichnung", mapAttributeNameToShortName("GS"));
+			attributeData.put("name", ATTRIBUTE_SPEED);
+
+			UUID id = sendToServer("Eigenschaft", attributeData, "Eigenschaften.xml", "/eigenschaft/id");
+			keys.put(CacheKey.EIGENSCHAFT + "Geschwindigkeit", id);
 		}
 		monitor.subtaskDone();
 	}
@@ -1104,7 +1116,7 @@ public class Cache
 		monitor.startSubtask("Zauber", spells.length);
 		for (String[] spellData : spells)
 		{
-			UUID spellId = getKey(CacheKey.VORTEIL, spellData[0], spellData[1]);
+			UUID spellId = getKey(CacheKey.ZAUBER, spellData[0], spellData[1]);
 			if (spellId == null)
 			{
 				throw new HeldenWebExportException(MessageFormat.format(
@@ -1145,6 +1157,21 @@ public class Cache
 							"EigenschaftenHelden");
 			monitor.step();
 		}
+
+		// Special treatment for speed
+		UUID attributeId = getKey(CacheKey.EIGENSCHAFT, ATTRIBUTE_SPEED);
+		if (attributeId == null)
+		{
+			throw new HeldenWebExportException(MessageFormat.format("Held referenziert unbekannte Eigenschaft {0}",
+							ATTRIBUTE_SPEED));
+		}
+		Map<String, String> data = new HashMap<String, String>();
+		data.put("held_id", heroId.toString());
+		data.put("eigenschaft_id", attributeId.toString());
+		data.put("wert", Integer.toString(werkzeug.getGeschwindigkeit()));
+		sendMappingToServer(CacheKey.HELD_EIGENSCHAFT, heroId, attributeId, data, "EigenschaftenHeld",
+						"EigenschaftenHelden");
+		monitor.step();
 		monitor.subtaskDone();
 	}
 }
