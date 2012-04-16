@@ -1,5 +1,7 @@
 package de.martindreier.heldenweb.export.sync;
 
+import helden.framework.geld.GeldBoerse;
+import helden.framework.geld.Muenze;
 import helden.plugin.werteplugin.HeldAngaben;
 import helden.plugin.werteplugin.PluginFernkampfWaffe;
 import helden.plugin.werteplugin.PluginHeld;
@@ -9,6 +11,7 @@ import helden.plugin.werteplugin.PluginTalent;
 import helden.plugin.werteplugin.PluginVorteil;
 import helden.plugin.werteplugin.PluginZauberInfo;
 import helden.plugin.werteplugin2.PluginFernkampfWaffe2;
+import helden.plugin.werteplugin2.PluginGegenstand;
 import helden.plugin.werteplugin2.PluginNahkampfWaffe2;
 import helden.plugin.werteplugin2.PluginSchildParadewaffe;
 import helden.plugin.werteplugin3.PluginHeldenWerteWerkzeug3;
@@ -18,8 +21,10 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -65,7 +70,8 @@ public class Cache
 	public static enum CacheKey
 	{
 		TALENT, EIGENSCHAFT, TALENTART, VORTEIL, SONDERFERTIGKEIT, ZAUBER, HELD, HELD_TALENT, HELD_VORTEIL,
-		HELD_SONDERFERTIGKEIT, HELD_ZAUBER, HELD_EIGENSCHAFT, NAHKAMPFWAFFE, FERNKAMPFWAFFE, RUESTUNG, SCHILD, KAMPF
+		HELD_SONDERFERTIGKEIT, HELD_ZAUBER, HELD_EIGENSCHAFT, NAHKAMPFWAFFE, FERNKAMPFWAFFE, RUESTUNG, SCHILD, KAMPF,
+		GEGENSTAENDE, HELD_GEGENSTAENDE, MUENZEN
 	};
 
 	/**
@@ -1463,5 +1469,81 @@ public class Cache
 		{
 			sendToServer("Kampf", data, "Kampf/edit/" + key.toString() + ".xml", "/kampf/id");
 		}
+	}
+
+	public void synchronizeInventory(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
+	{
+		getIdsFromServer(CacheKey.GEGENSTAENDE, "gegenstand", "Gegenstaende.xml", "Gegenstände", true, "held_id", "index");
+
+		ArrayList<String> inventory = werkzeug.getInventarAlsString();
+		monitor.startSubtask("Gegenstände", inventory.size());
+		for (String itemName : inventory)
+		{
+			PluginGegenstand[] items = werkzeug.getGegenstand(itemName);
+			for (int index = 0; index < items.length; index++)
+			{
+				String indexString = Integer.toString(index);
+				PluginGegenstand item = items[index];
+				if (item == null)
+				{
+					continue;
+				}
+
+				Map<String, String> data = new HashMap<String, String>();
+				data.put("held_id", heldId.toString());
+				data.put("name", item.toString());
+				data.put("index", indexString);
+				data.put("anzahl", Integer.toString(item.getAnzahl()));
+				data.put("anzeigename", item.getName());
+				data.put("gewicht", Float.toString(item.getGewicht()));
+				data.put("preis", Integer.toString(item.getPreis()));
+
+				UUID key = getKey(CacheKey.GEGENSTAENDE, itemName, heldId.toString(), indexString);
+				if (key == null)
+				{
+					key = sendToServer("Gegenstand", data, "Gegenstaende.xml", "/gegenstand/id");
+					keys.put(CacheKey.GEGENSTAENDE + itemName + heldId.toString() + indexString, key);
+				}
+				else
+				{
+					sendToServer("Gegenstand", data, "Gegenstaende/edit/" + key.toString() + ".xml", "/gegenstand/id");
+				}
+			}
+			monitor.step();
+		}
+		monitor.subtaskDone();
+	}
+
+	public void syncronizeMoney(UUID heldId, PluginHeldenWerteWerkzeug3 werkzeug, ProgressMonitor monitor)
+					throws HeldenWebExportException
+	{
+		getIdsFromServer(CacheKey.MUENZEN, "muenze", "Muenzen.xml", "Münzen", true, "held_id");
+
+		GeldBoerse boerse = werkzeug.getGeldBoerse();
+		Iterator<Muenze> münzen = boerse.getMuenzeIter();
+		monitor.startSubtask("Münzen", boerse.getGeldStrings().size());
+		while (münzen.hasNext())
+		{
+			Muenze münze = münzen.next();
+			Map<String, String> data = new HashMap<String, String>();
+			data.put("held_id", heldId.toString());
+			data.put("name", münze.getBezeichner());
+			data.put("gruppe", münze.getWaehrungsBezeichner());
+			data.put("anzahl", Integer.toString(boerse.getMuenzAnzahl(münze)));
+
+			UUID key = getKey(CacheKey.MUENZEN, münze.getBezeichner(), heldId.toString());
+			if (key == null)
+			{
+				key = sendToServer("Muenze", data, "Muenzen.xml", "/muenze/id");
+				keys.put(CacheKey.MUENZEN + münze.getBezeichner() + heldId.toString(), key);
+			}
+			else
+			{
+				sendToServer("Muenze", data, "Muenzen/edit/" + key.toString() + ".xml", "/muenze/id");
+			}
+			monitor.step();
+		}
+		monitor.subtaskDone();
 	}
 }
